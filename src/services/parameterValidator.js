@@ -259,7 +259,12 @@ function validateAgainstRules(procedureName, parameters, errors) {
   }
 
   // Exact allowed values only — never silently rewrite (e.g. sales -> sale).
+  // multiValueParams (e.g. propTypes) may be a comma-separated list of exact enum tokens.
   const enums = rules.enums || {};
+  const multiValueParams = new Set(
+    (rules.multiValueParams || []).map((name) => stripAt(name).toLowerCase())
+  );
+
   for (const paramName of Object.keys(enums)) {
     const allowedValues = enums[paramName];
     if (!Array.isArray(allowedValues) || allowedValues.length === 0) {
@@ -274,12 +279,58 @@ function validateAgainstRules(procedureName, parameters, errors) {
       continue;
     }
 
+    const displayName = stripAt(paramName);
+    const allowedLabel = allowedValues.join(', ');
+
+    if (multiValueParams.has(key)) {
+      if (typeof value !== 'string') {
+        errors.push(
+          makeError(displayName, 'INVALID_TYPE', `Parameter "${displayName}" must be a string.`)
+        );
+        continue;
+      }
+
+      const tokens = value
+        .split(',')
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+
+      if (tokens.length === 0) {
+        errors.push(
+          makeError(
+            displayName,
+            'INVALID_VALUE',
+            `Parameter "${displayName}" must be one of: ${allowedLabel}.`
+          )
+        );
+        continue;
+      }
+
+      const invalidTokens = [];
+      for (const token of tokens) {
+        if (!allowedValues.includes(token)) {
+          invalidTokens.push(token);
+        }
+      }
+
+      if (invalidTokens.length > 0) {
+        errors.push(
+          makeError(
+            displayName,
+            'INVALID_VALUE',
+            `Parameter "${displayName}" has invalid value(s): ${invalidTokens.join(', ')}. Allowed: ${allowedLabel}. Use exact names; for multiple types join with commas (e.g. "Condo, Single Family").`
+          )
+        );
+      }
+      continue;
+    }
+
     if (!allowedValues.includes(value)) {
       errors.push(
         makeError(
-          stripAt(paramName),
+          displayName,
           'INVALID_VALUE',
-          `Parameter "${stripAt(paramName)}" must be one of: ${allowedValues.join(', ')}.`
+          `Parameter "${displayName}" must be one of: ${allowedLabel}.`
         )
       );
     }

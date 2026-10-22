@@ -87,14 +87,34 @@ function isConnectionError(error) {
   return false;
 }
 
+// MCP SDK ErrorCode.RequestTimeout === -32001 ("Request timed out").
+function isMcpRequestTimeout(error) {
+  if (!error) {
+    return false;
+  }
+  if (error.code === -32001 || error.code === 'MCP_REQUEST_TIMEOUT') {
+    return true;
+  }
+  const message = String(error.message || '');
+  return /MCP error -32001|Request timed out/i.test(message);
+}
+
 async function callMcpTool(toolName, args = {}) {
   const client = await connectMcpClient();
+  // Must exceed Gemini SDK timeout × retries; SDK default is only 60s.
+  const toolTimeoutMs = env.mcpToolTimeoutMs;
 
   try {
-    const rawResult = await client.callTool({
-      name: toolName,
-      arguments: args,
-    });
+    const rawResult = await client.callTool(
+      {
+        name: toolName,
+        arguments: args,
+      },
+      undefined,
+      {
+        timeout: toolTimeoutMs,
+      }
+    );
 
     const parsed = parseToolResult(rawResult);
 
@@ -123,7 +143,7 @@ async function callMcpTool(toolName, args = {}) {
       throw error;
     }
 
-    // Reset the client so the next call can reconnect.
+    // Reset the client so the next call can reconnect (drops timed-out session state).
     await closeMcpClient();
 
     if (isConnectionError(error)) {
@@ -132,6 +152,29 @@ async function callMcpTool(toolName, args = {}) {
       connectionError.status = 503;
       connectionError.cause = error;
       throw connectionError;
+    }
+
+    if (isMcpRequestTimeout(error)) {
+      const timeoutError = new Error(
+        `MCP tool "${toolName}" timed out after ${toolTimeoutMs}ms waiting for the MCP server. The tool may still finish on the server; retry once if needed.`
+      );
+      timeoutError.code = 'MCP_REQUEST_TIMEOUT';
+      timeoutError.status = 504;
+      timeoutError.cause = error;
+      timeoutError.payload = {
+        success: false,
+        procedure: null,
+        parameters: {},
+        errors: [
+          {
+            parameter: 'mcp',
+            code: 'MCP_REQUEST_TIMEOUT',
+            message: timeoutError.message,
+          },
+        ],
+        httpStatusHint: 504,
+      };
+      throw timeoutError;
     }
 
     const wrapped = new Error(error.message || 'MCP tool call failed');
@@ -146,4 +189,5 @@ module.exports = {
   connectMcpClient,
   closeMcpClient,
   callMcpTool,
+  isMcpRequestTimeout,
 };

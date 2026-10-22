@@ -3,7 +3,11 @@
 // {
 //   "dbo.GetLoveableAPIListings": {
 //     "required": ["listing_type"],
-//     "enums": { "listing_type": ["sale", "rental"] },
+//     "enums": {
+//       "listing_type": ["sale", "rental"],
+//       "propTypes": ["Condo", "Townhouse", "Single Family", "Multi-Family", "Loft"]
+//     },
+//     "multiValueParams": ["propTypes"],
 //     "ranges": { "minBed": { "min": 0, "max": 20 } },
 //     "pairs": [{ "min": "minBed", "max": "maxBed" }, { "min": "minSqFt", "max": "maxSqFt" }]
 //   }

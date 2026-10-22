@@ -69,13 +69,17 @@ async function connectWithFriendlyError() {
   realConnectAttempted = true;
 
   try {
-    const pool = await sql.connect(buildConfig());
+    const pool = await new sql.ConnectionPool(buildConfig()).connect();
     return pool;
   } catch (cause) {
     // Clear so the next call can retry.
     // Important: a failed real connection does NOT enable mock mode.
     poolPromise = null;
-    const error = new Error('Failed to connect to SQL Server');
+
+    // Never include credentials; surface only a safe driver message fragment.
+    const driverMessage =
+      cause && cause.message ? String(cause.message).replace(/\s+/g, ' ').slice(0, 200) : 'unknown error';
+    const error = new Error(`Failed to connect to SQL Server (${driverMessage})`);
     error.code = 'SQL_CONNECTION_FAILED';
     error.status = 503;
     error.cause = cause;

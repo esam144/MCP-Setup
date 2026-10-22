@@ -18,7 +18,7 @@ function getGeminiClient() {
   if (!client || clientTimeoutMs !== env.geminiTimeoutMs) {
     client = new GoogleGenAI({
       apiKey: env.geminiApiKey,
-      // SDK-level HTTP timeout (AbortController). Keep in sync with GEMINI_TIMEOUT_MS.
+      // SDK-level HTTP timeout (AbortController). Driven by GEMINI_TIMEOUT_MS (default 90s).
       httpOptions: {
         timeout: env.geminiTimeoutMs,
       },

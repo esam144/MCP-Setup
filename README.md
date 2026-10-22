@@ -37,9 +37,10 @@ See `.env.example`. Important variables:
 | `ALLOWED_PROCEDURES` | Comma-separated schema-qualified procedures the app may use |
 | `BUSINESS_RULES_JSON` | Optional required params, ranges, and min/max pairs |
 | `GEMINI_API_KEY` / `GEMINI_MODEL` | Gemini for NL interpret + semantic review (default model: `gemini-2.5-flash`) |
-| `GEMINI_TIMEOUT_MS` | App + SDK timeout for Gemini calls (default `30000`) |
+| `GEMINI_TIMEOUT_MS` | SDK HTTP timeout for Gemini calls (default `90000`); app race is 5s longer |
 | `GEMINI_MAX_RETRIES` | Extra attempts for transient 429/503/504 only (default `1`) |
 | `MCP_SERVER_URL` / `MCP_SERVER_PORT` | MCP Streamable HTTP endpoint |
+| `MCP_TOOL_TIMEOUT_MS` | Optional MCP `callTool` timeout (default derived from Gemini timeout × retries; SDK default is only 60s) |
 | `MCP_AUTH_TOKEN` | Shared bearer token between API and MCP server |
 | `API_AUTH_TOKEN` | Bearer token required for `POST /api/execute` (required in production) |
 | `CORS_ORIGIN` | Allowed frontend origin(s), comma-separated |
@@ -69,7 +70,9 @@ Edit mock schemas in `src/mocks/mockDatabase.js`. The `GetLoveableAPIAgentRoster
 ### Switching to real SQL Server later
 
 1. Set `MOCK_DATABASE=false` (or remove the variable).
-2. Fill `SQL_SERVER`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`.
+2. Fill `SQL_SERVER`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD` (local Ubuntu often uses `SQL_ENCRYPT=false` and `SQL_TRUST_SERVER_CERTIFICATE=true`).
+3. Verify with `npm run test:db` (expects `DB_NAME()` = your configured database, e.g. `MCPDatabase`).
+4. Bootstrap local tables/procedures and fictional seed rows: `npm run seed` (idempotent; uses `SEED-*` MLS/agent keys; does not delete existing data).
 3. Keep `ALLOWED_PROCEDURES` aligned with procedures that exist on the server.
 4. Restart MCP + Express. Startup should log `Database mode: REAL SQL Server`.
 
@@ -157,7 +160,7 @@ HTTP responses are simplified for the frontend. Internal MCP tools still carry f
    ```env
    GEMINI_API_KEY=your_key_here
    GEMINI_MODEL=gemini-2.5-flash
-   GEMINI_TIMEOUT_MS=30000
+   GEMINI_TIMEOUT_MS=90000
    ```
 2. Restart MCP + Express (`npm run mcp`, `npm run dev`).
 3. Run:
@@ -167,7 +170,7 @@ HTTP responses are simplified for the frontend. Internal MCP tools still carry f
      -d '{"request":"Find properties for sale with two to five bedrooms."}'
    ```
 
-**Note:** `gemini-flash-latest` can be slow or overloaded and may hit `GEMINI_TIMEOUT` with a 30s limit. Prefer `gemini-2.5-flash` for this app.
+**Note:** Slow models or cold starts can exceed 30s; keep `GEMINI_TIMEOUT_MS` at least `90000` for `gemini-3.8-flash`.
 
 Gemini proposals are always checked against the allowlist and deterministic validation. Gemini cannot authorize SQL execution.
 

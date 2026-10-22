@@ -63,16 +63,17 @@ const env = {
   // gemini-flash-latest can be slow/overloaded and trip the app timeout.
   // gemini-2.5-flash is a stable, fast default for structured JSON calls.
   geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-  geminiTimeoutMs: parseIntEnv(process.env.GEMINI_TIMEOUT_MS, 30000),
+  geminiTimeoutMs: parseIntEnv(process.env.GEMINI_TIMEOUT_MS, 90000),
   // Limited retries for transient Gemini failures only (429/503/504).
   geminiMaxRetries: parseIntEnv(process.env.GEMINI_MAX_RETRIES, 1),
 
+  // Preferred names: SQL_*. Optional DB_* aliases accepted for local setup docs.
   sql: {
-    server: process.env.SQL_SERVER || '',
-    port: parseIntEnv(process.env.SQL_PORT, 1433),
-    database: process.env.SQL_DATABASE || '',
-    user: process.env.SQL_USER || '',
-    password: process.env.SQL_PASSWORD || '',
+    server: process.env.SQL_SERVER || process.env.DB_SERVER || '',
+    port: parseIntEnv(process.env.SQL_PORT || process.env.DB_PORT, 1433),
+    database: process.env.SQL_DATABASE || process.env.DB_NAME || '',
+    user: process.env.SQL_USER || process.env.DB_USER || '',
+    password: process.env.SQL_PASSWORD || process.env.DB_PASSWORD || '',
     encrypt: parseBool(process.env.SQL_ENCRYPT, true),
     trustServerCertificate: parseBool(process.env.SQL_TRUST_SERVER_CERTIFICATE, false),
     connectionTimeoutMs: parseIntEnv(process.env.SQL_CONNECTION_TIMEOUT_MS, 15000),
@@ -100,6 +101,22 @@ const env = {
   // Development-only fake SQL Server. Never enable automatically on connection failure.
   mockDatabase: parseBool(process.env.MOCK_DATABASE, false),
 };
+
+// MCP SDK default callTool timeout is 60s, which is shorter than Gemini (90s) + retry.
+// Prefer an explicit MCP_TOOL_TIMEOUT_MS; otherwise derive a bounded value from Gemini settings.
+function resolveMcpToolTimeoutMs() {
+  const configured = parseIntEnv(process.env.MCP_TOOL_TIMEOUT_MS, 0);
+  if (configured > 0) {
+    return configured;
+  }
+
+  const geminiAttempts = 1 + Math.max(0, env.geminiMaxRetries);
+  // Per attempt: SDK timeout + app race buffer (5s) + small MCP/tool overhead.
+  const perAttemptMs = env.geminiTimeoutMs + 5000 + 10000;
+  return geminiAttempts * perAttemptMs;
+}
+
+env.mcpToolTimeoutMs = resolveMcpToolTimeoutMs();
 
 function assertSqlConfigured() {
   // Mock mode does not need real SQL credentials.

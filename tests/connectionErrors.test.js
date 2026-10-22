@@ -5,11 +5,16 @@ describe('SQL connection failure handling', () => {
   it('buildConfig fails clearly when SQL env is missing', () => {
     const saved = { ...process.env };
     // Real mode: missing SQL credentials must fail (mock mode would skip this check).
+    // Use empty strings (not delete) so dotenv cannot reinject values from .env.
     process.env.MOCK_DATABASE = 'false';
-    delete process.env.SQL_SERVER;
-    delete process.env.SQL_DATABASE;
-    delete process.env.SQL_USER;
-    delete process.env.SQL_PASSWORD;
+    process.env.SQL_SERVER = '';
+    process.env.SQL_DATABASE = '';
+    process.env.SQL_USER = '';
+    process.env.SQL_PASSWORD = '';
+    process.env.DB_SERVER = '';
+    process.env.DB_NAME = '';
+    process.env.DB_USER = '';
+    process.env.DB_PASSWORD = '';
     delete require.cache[require.resolve('../src/config/env')];
     delete require.cache[require.resolve('../src/config/database')];
 

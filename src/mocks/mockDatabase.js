@@ -34,7 +34,7 @@ const MOCK_PROCEDURES = {
     parameters: [
       makeParam('listing_type', 'varchar', { ordinal: 1, maxLength: 50 }),
       makeParam('mls', 'varchar', { ordinal: 2, maxLength: 50 }),
-      makeParam('propTypes', 'varchar', { ordinal: 3, maxLength: 100 }),
+      makeParam('propTypes', 'varchar', { ordinal: 3, maxLength: 200 }),
       makeParam('minBed', 'int', { ordinal: 4, precision: 10 }),
       makeParam('maxBed', 'int', { ordinal: 5, precision: 10 }),
       makeParam('minBath', 'decimal', { ordinal: 6, precision: 9, scale: 2 }),
