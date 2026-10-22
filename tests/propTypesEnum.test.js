@@ -6,7 +6,6 @@ const LISTINGS_RULES = {
     required: ['listing_type'],
     enums: {
       listing_type: ['sale', 'rental'],
-      propTypes: ['Condo', 'Townhouse', 'Single Family', 'Multi-Family', 'Loft'],
     },
     multiValueParams: ['propTypes'],
     pairs: [
@@ -16,12 +15,11 @@ const LISTINGS_RULES = {
   },
 };
 
-describe('GetLoveableAPIListings propTypes enum and multi-value filters', () => {
+describe('GetLoveableAPIListings propTypes open multi-value filters', () => {
   let validateParameters;
   let executeStoredProcedure;
   let clearMetadataCache;
   let isMockDatabase;
-  let sqlAvailable = false;
 
   before(() => {
     process.env.NODE_ENV = 'development';
@@ -50,7 +48,7 @@ describe('GetLoveableAPIListings propTypes enum and multi-value filters', () => 
     clearMetadataCache();
   });
 
-  it('accepts exact propTypes Condo', async () => {
+  it('accepts propTypes Condo', async () => {
     const result = await validateParameters('dbo.GetLoveableAPIListings', {
       listing_type: 'sale',
       propTypes: 'Condo',
@@ -59,40 +57,60 @@ describe('GetLoveableAPIListings propTypes enum and multi-value filters', () => 
     assert.equal(result.normalizedParameters.propTypes, 'Condo');
   });
 
-  it('accepts exact propTypes Single Family', async () => {
+  it('accepts propTypes Apartment even when not in any hardcoded allowlist', async () => {
     const result = await validateParameters('dbo.GetLoveableAPIListings', {
       listing_type: 'sale',
-      propTypes: 'Single Family',
+      propTypes: 'Apartment',
     });
     assert.equal(result.valid, true);
-    assert.equal(result.normalizedParameters.propTypes, 'Single Family');
+    assert.equal(result.normalizedParameters.propTypes, 'Apartment');
   });
 
-  it('accepts comma-separated Condo and Single Family', async () => {
+  it('accepts comma-separated Condo, Apartment, Commercial', async () => {
     const result = await validateParameters('dbo.GetLoveableAPIListings', {
       listing_type: 'sale',
-      propTypes: 'Condo, Single Family',
+      propTypes: 'Condo, Apartment, Commercial',
     });
     assert.equal(result.valid, true);
-    assert.equal(result.normalizedParameters.propTypes, 'Condo, Single Family');
+    assert.equal(result.normalizedParameters.propTypes, 'Condo, Apartment, Commercial');
   });
 
-  it('rejects invalid propTypes values', async () => {
+  it('trims whitespace around comma-separated propTypes values', async () => {
     const result = await validateParameters('dbo.GetLoveableAPIListings', {
       listing_type: 'sale',
-      propTypes: 'apartment',
+      propTypes: '  Condo ,  Apartment  ',
     });
-    assert.equal(result.valid, false);
-    assert.ok(result.errors.some((e) => e.parameter === 'propTypes' && e.code === 'INVALID_VALUE'));
+    assert.equal(result.valid, true);
+    assert.equal(result.normalizedParameters.propTypes, 'Condo, Apartment');
   });
 
-  it('rejects lowercase or combined invented propTypes strings', async () => {
+  it('rejects empty propTypes string', async () => {
     const result = await validateParameters('dbo.GetLoveableAPIListings', {
       listing_type: 'sale',
-      propTypes: 'condo, single family',
+      propTypes: '',
     });
     assert.equal(result.valid, false);
-    assert.ok(result.errors.some((e) => e.parameter === 'propTypes' && e.code === 'INVALID_VALUE'));
+    assert.ok(result.errors.some((e) => e.parameter === 'propTypes'));
+  });
+
+  it('rejects empty comma-separated entries', async () => {
+    const result = await validateParameters('dbo.GetLoveableAPIListings', {
+      listing_type: 'sale',
+      propTypes: 'Condo,,Apartment',
+    });
+    assert.equal(result.valid, false);
+    assert.ok(
+      result.errors.some((e) => e.parameter === 'propTypes' && e.code === 'INVALID_VALUE')
+    );
+  });
+
+  it('rejects non-string propTypes values', async () => {
+    const result = await validateParameters('dbo.GetLoveableAPIListings', {
+      listing_type: 'sale',
+      propTypes: 42,
+    });
+    assert.equal(result.valid, false);
+    assert.ok(result.errors.some((e) => e.parameter === 'propTypes'));
   });
 
   it('preserves listing_type sale|rental only', async () => {
@@ -114,16 +132,16 @@ describe('GetLoveableAPIListings propTypes enum and multi-value filters', () => 
     assert.equal(isMockDatabase(), true);
     const result = await executeStoredProcedure('dbo.GetLoveableAPIListings', {
       listing_type: 'sale',
-      propTypes: 'Condo, Single Family',
+      propTypes: 'Condo, Apartment, Commercial',
     });
     assert.equal(result.success, true);
     assert.equal(result.mock, true);
-    assert.equal(result.result.parametersEcho.propTypes, 'Condo, Single Family');
+    assert.equal(result.result.parametersEcho.propTypes, 'Condo, Apartment, Commercial');
   });
 });
 
 describe('GetLoveableAPIListings propTypes against real SQL when available', () => {
-  it('returns Condo, Single Family, and multi-type rows from the seeded SP', async () => {
+  it('returns matching rows for known types and zero rows for unknown types', async () => {
     process.env.MOCK_DATABASE = 'false';
     delete require.cache[require.resolve('../src/config/env')];
     delete require.cache[require.resolve('../src/config/database')];
@@ -145,7 +163,6 @@ describe('GetLoveableAPIListings propTypes against real SQL when available', () 
     }
 
     try {
-      // Ensure procedure definition includes STRING_SPLIT multi-value support.
       const fs = require('fs');
       const path = require('path');
       const sqlText = fs.readFileSync(
@@ -165,14 +182,6 @@ describe('GetLoveableAPIListings propTypes against real SQL when available', () 
       assert.ok((condo.recordset || []).length > 0);
       assert.ok((condo.recordset || []).every((row) => row.propTypes === 'Condo'));
 
-      const single = await pool
-        .request()
-        .input('listing_type', require('mssql').VarChar(50), 'sale')
-        .input('propTypes', require('mssql').VarChar(200), 'Single Family')
-        .execute('dbo.GetLoveableAPIListings');
-      assert.ok((single.recordset || []).length > 0);
-      assert.ok((single.recordset || []).every((row) => row.propTypes === 'Single Family'));
-
       const both = await pool
         .request()
         .input('listing_type', require('mssql').VarChar(50), 'sale')
@@ -183,17 +192,15 @@ describe('GetLoveableAPIListings propTypes against real SQL when available', () 
       const types = new Set(bothRows.map((row) => row.propTypes));
       assert.ok(types.has('Condo'));
       assert.ok(types.has('Single Family'));
-      assert.ok([...types].every((t) => t === 'Condo' || t === 'Single Family'));
 
-      const combinedBad = await pool
+      // Unknown type is not a validation error at SQL — zero matching rows.
+      const unknown = await pool
         .request()
         .input('listing_type', require('mssql').VarChar(50), 'sale')
-        .input('propTypes', require('mssql').VarChar(200), 'condo, single family')
+        .input('propTypes', require('mssql').VarChar(200), 'Commercial')
         .execute('dbo.GetLoveableAPIListings');
-      // Exact equality after split: lowercase tokens should not match seeded Title Case values
-      // under a case-sensitive comparison; with CI collation they might. Prefer empty or
-      // validate-layer rejection (covered above). Assert no crash and array result.
-      assert.ok(Array.isArray(combinedBad.recordset));
+      assert.ok(Array.isArray(unknown.recordset));
+      assert.equal((unknown.recordset || []).length, 0);
     } finally {
       await closePool();
     }

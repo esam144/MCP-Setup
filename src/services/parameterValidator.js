@@ -234,8 +234,33 @@ function validateSingleValue(param, value) {
   return makeError(name, 'UNSUPPORTED_TYPE', `Unsupported SQL type: ${param.sqlType}`);
 }
 
+// Parse a comma-separated multi-value string. Rejects empty entries (e.g. "Condo,,Loft").
+function parseMultiValueTokens(value) {
+  if (typeof value !== 'string') {
+    return { ok: false, code: 'INVALID_TYPE', message: 'must be a string.' };
+  }
+
+  const parts = value.split(',');
+  const tokens = [];
+
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (trimmed.length === 0) {
+      return {
+        ok: false,
+        code: 'INVALID_VALUE',
+        message:
+          'must be a non-empty string, or a comma-separated list of non-empty values (empty entries are not allowed).',
+      };
+    }
+    tokens.push(trimmed);
+  }
+
+  return { ok: true, tokens };
+}
+
 // Apply optional BUSINESS_RULES_JSON checks (required fields, enums, ranges, min/max pairs).
-function validateAgainstRules(procedureName, parameters, errors) {
+function validateAgainstRules(procedureName, parameters, errors, normalizedParameters) {
   const rules = getBusinessRules(procedureName);
 
   // Normalize keys to lowercase without @ for easier lookup.
@@ -258,13 +283,31 @@ function validateAgainstRules(procedureName, parameters, errors) {
     }
   }
 
-  // Exact allowed values only — never silently rewrite (e.g. sales -> sale).
-  // multiValueParams (e.g. propTypes) may be a comma-separated list of exact enum tokens.
-  const enums = rules.enums || {};
-  const multiValueParams = new Set(
-    (rules.multiValueParams || []).map((name) => stripAt(name).toLowerCase())
-  );
+  // multiValueParams (e.g. propTypes): any non-empty tokens, comma-separated; no fixed allowlist.
+  const multiValueParams = rules.multiValueParams || [];
+  for (const paramName of multiValueParams) {
+    const displayName = stripAt(paramName);
+    const key = displayName.toLowerCase();
+    const value = supplied[key];
 
+    if (isMissing(value) || isNullLike(value)) {
+      continue;
+    }
+
+    const parsed = parseMultiValueTokens(value);
+    if (!parsed.ok) {
+      errors.push(makeError(displayName, parsed.code, `Parameter "${displayName}" ${parsed.message}`));
+      continue;
+    }
+
+    // Store trimmed, comma-separated form for execution.
+    if (normalizedParameters && Object.prototype.hasOwnProperty.call(normalizedParameters, displayName)) {
+      normalizedParameters[displayName] = parsed.tokens.join(', ');
+    }
+  }
+
+  // Exact allowed values only — never silently rewrite (e.g. sales -> sale).
+  const enums = rules.enums || {};
   for (const paramName of Object.keys(enums)) {
     const allowedValues = enums[paramName];
     if (!Array.isArray(allowedValues) || allowedValues.length === 0) {
@@ -281,49 +324,6 @@ function validateAgainstRules(procedureName, parameters, errors) {
 
     const displayName = stripAt(paramName);
     const allowedLabel = allowedValues.join(', ');
-
-    if (multiValueParams.has(key)) {
-      if (typeof value !== 'string') {
-        errors.push(
-          makeError(displayName, 'INVALID_TYPE', `Parameter "${displayName}" must be a string.`)
-        );
-        continue;
-      }
-
-      const tokens = value
-        .split(',')
-        .map((part) => part.trim())
-        .filter((part) => part.length > 0);
-
-      if (tokens.length === 0) {
-        errors.push(
-          makeError(
-            displayName,
-            'INVALID_VALUE',
-            `Parameter "${displayName}" must be one of: ${allowedLabel}.`
-          )
-        );
-        continue;
-      }
-
-      const invalidTokens = [];
-      for (const token of tokens) {
-        if (!allowedValues.includes(token)) {
-          invalidTokens.push(token);
-        }
-      }
-
-      if (invalidTokens.length > 0) {
-        errors.push(
-          makeError(
-            displayName,
-            'INVALID_VALUE',
-            `Parameter "${displayName}" has invalid value(s): ${invalidTokens.join(', ')}. Allowed: ${allowedLabel}. Use exact names; for multiple types join with commas (e.g. "Condo, Single Family").`
-          )
-        );
-      }
-      continue;
-    }
 
     if (!allowedValues.includes(value)) {
       errors.push(
@@ -446,7 +446,12 @@ async function validateParameters(procedureName, parameters = {}, options = {}) 
     }
   }
 
-  validateAgainstRules(normalizedName, { ...parameters, ...normalizedParameters }, errors);
+  validateAgainstRules(
+    normalizedName,
+    { ...parameters, ...normalizedParameters },
+    errors,
+    normalizedParameters
+  );
 
   const valid = errors.length === 0;
   return {
