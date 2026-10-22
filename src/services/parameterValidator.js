@@ -461,9 +461,5 @@ async function validateParameters(procedureName, parameters = {}, options = {}) 
 
 module.exports = {
   validateParameters,
-  validateSingleValue,
   stripAt,
-  INTEGER_TYPES,
-  DECIMAL_TYPES,
-  STRING_TYPES,
 };

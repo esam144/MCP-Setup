@@ -202,5 +202,4 @@ async function executeStoredProcedure(procedureName, parameters = {}) {
 module.exports = {
   executeStoredProcedure,
   quoteIdent,
-  resolveSqlType,
 };

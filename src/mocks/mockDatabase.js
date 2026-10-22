@@ -81,10 +81,6 @@ function getMockProcedureMetadata(procedureName) {
   };
 }
 
-function listMockProcedureKeys() {
-  return Object.keys(MOCK_PROCEDURES);
-}
-
 function buildMockExecutionResult(procedureQualifiedName, normalizedParameters) {
   return {
     success: true,
@@ -111,9 +107,6 @@ function buildMockExecutionResult(procedureQualifiedName, normalizedParameters) 
 }
 
 module.exports = {
-  MOCK_PROCEDURES,
   getMockProcedureMetadata,
-  listMockProcedureKeys,
   buildMockExecutionResult,
-  makeParam,
 };

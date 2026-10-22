@@ -11,21 +11,12 @@ const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
-// Allow the frontend origin(s) listed in CORS_ORIGIN.
-const corsOrigins = [];
-for (const part of env.corsOrigin.split(',')) {
-  const trimmed = part.trim();
-  if (trimmed) {
-    corsOrigins.push(trimmed);
-  }
-}
-
-let corsOriginOption = corsOrigins;
-if (corsOrigins.length === 1) {
-  corsOriginOption = corsOrigins[0];
-}
-
-app.use(cors({ origin: corsOriginOption }));
+// Allow the frontend origin(s) listed in CORS_ORIGIN (comma-separated).
+const corsOrigins = env.corsOrigin
+  .split(',')
+  .map((part) => part.trim())
+  .filter(Boolean);
+app.use(cors({ origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins }));
 app.use(morgan(env.isProduction ? 'combined' : 'dev'));
 app.use(express.json({ limit: env.requestBodyLimit }));
 app.use(apiRateLimiter);

@@ -30,15 +30,10 @@ function parseToolResult(result) {
   }
 
   // Fall back to the first text content block.
-  let textBlock = null;
-  if (result.content && Array.isArray(result.content)) {
-    for (const block of result.content) {
-      if (block.type === 'text') {
-        textBlock = block;
-        break;
-      }
-    }
-  }
+  const textBlock =
+    result.content && Array.isArray(result.content)
+      ? result.content.find((block) => block.type === 'text')
+      : null;
 
   if (textBlock && textBlock.text) {
     try {

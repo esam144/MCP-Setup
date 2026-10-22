@@ -47,12 +47,6 @@ function getBusinessRules(procedureName) {
   return cachedRules[normalizeProcedureName(procedureName)] || {};
 }
 
-function resetBusinessRulesCache() {
-  cachedRules = null;
-}
-
 module.exports = {
   getBusinessRules,
-  resetBusinessRulesCache,
-  loadBusinessRules,
 };

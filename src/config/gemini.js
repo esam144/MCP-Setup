@@ -33,15 +33,9 @@ function isGeminiConfigured() {
   return Boolean(env.geminiApiKey);
 }
 
-function resetGeminiClientForTests() {
-  client = null;
-  clientTimeoutMs = null;
-}
-
 module.exports = {
   getGeminiClient,
   isGeminiConfigured,
-  resetGeminiClientForTests,
   geminiModel: () => env.geminiModel,
   geminiTimeoutMs: () => env.geminiTimeoutMs,
   geminiMaxRetries: () => env.geminiMaxRetries,

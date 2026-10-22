@@ -506,7 +506,6 @@ async function semanticValidate(procedureName, parameters, deterministicResult) 
 module.exports = {
   interpretRequest,
   semanticValidate,
-  isGeminiConfigured,
   safeParseJson,
   classifyGeminiError,
   generateJson,

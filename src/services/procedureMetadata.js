@@ -20,12 +20,6 @@ function ensureAllowlist() {
   }
 }
 
-function isAllowedProcedure(procedureName) {
-  ensureAllowlist();
-  const normalized = normalizeProcedureName(procedureName);
-  return env.allowedProcedures.includes(normalized);
-}
-
 function assertAllowedProcedure(procedureName) {
   ensureAllowlist();
   const normalized = normalizeProcedureName(procedureName);
@@ -194,7 +188,6 @@ function clearMetadataCache() {
 module.exports = {
   listAllowedProcedures,
   getProcedureMetadata,
-  isAllowedProcedure,
   assertAllowedProcedure,
   clearMetadataCache,
   normalizeProcedureName,
