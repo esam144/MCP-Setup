@@ -1,0 +1,36 @@
+{
+  "name": "service",
+  "version": "1.0.0",
+  "description": "MCP-based SQL Server stored procedure parameter validator",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "mcp": "node src/mcpServer.js",
+    "dev:mcp": "nodemon src/mcpServer.js",
+    "test": "node --test tests/*.test.js tests/**/*.test.js"
+  },
+  "keywords": [
+    "mcp",
+    "mssql",
+    "express",
+    "gemini"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@google/genai": "^2.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "morgan": "^1.12.1",
+    "mssql": "^12.7.11",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
