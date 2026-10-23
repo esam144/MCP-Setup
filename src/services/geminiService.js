@@ -358,7 +358,7 @@ async function interpretRequest(naturalLanguage) {
     'If the user asks for one property type, set propTypes to that single value.',
     'If the user asks for multiple property types, set propTypes to a comma-separated list (example: "Condo, Apartment, Commercial"). Do not use any other separator. Trim spaces around each value.',
     'map minimum/maximum square footage, sq ft, or square feet to minSqFt and maxSqFt (integers).',
-    'Map sale vs rental / for rent wording to listing_type values sale or rental when that parameter exists.',
+    'Map sale vs rental / for rent wording to listing_type values sale or rental when that parameter exists. If the user does not indicate sale or rental, use listing_type "sale".',
     'Omit optional filters the user did not mention.',
   ].join(' ');
 

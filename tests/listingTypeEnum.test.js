@@ -41,6 +41,15 @@ describe('dbo.GetLoveableAPIListings listing_type enum rules', () => {
     clearMetadataCache();
   });
 
+  it('defaults omitted listing_type to sale', async () => {
+    const result = await validateParameters('dbo.GetLoveableAPIListings', {
+      minBed: 1,
+      maxBed: 2,
+    });
+    assert.equal(result.valid, true);
+    assert.equal(result.normalizedParameters.listing_type, 'sale');
+  });
+
   it('accepts sale', async () => {
     const result = await validateParameters('dbo.GetLoveableAPIListings', {
       listing_type: 'sale',
@@ -57,6 +66,16 @@ describe('dbo.GetLoveableAPIListings listing_type enum rules', () => {
     });
     assert.equal(result.valid, true);
     assert.equal(result.normalizedParameters.listing_type, 'rental');
+  });
+
+  it('allows mock execution when listing_type is omitted (defaults to sale)', async () => {
+    const result = await executeStoredProcedure('dbo.GetLoveableAPIListings', {
+      minBed: 1,
+      maxBed: 2,
+    });
+    assert.equal(result.success, true);
+    assert.equal(result.executed, true);
+    assert.equal(result.result.parametersEcho.listing_type, 'sale');
   });
 
   it('rejects sales with INVALID_VALUE (no silent conversion)', async () => {

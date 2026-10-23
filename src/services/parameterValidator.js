@@ -446,6 +446,21 @@ async function validateParameters(procedureName, parameters = {}, options = {}) 
     }
   }
 
+  // Default omitted listing_type to "sale" before required/enum checks.
+  // Explicit null, empty string, or invalid values are not rewritten.
+  const listingTypeParam = paramIndex.get('listing_type');
+  if (listingTypeParam) {
+    const listingTypeProvided = inputEntries.some(
+      ([rawName]) => stripAt(rawName).toLowerCase() === 'listing_type'
+    );
+    if (!listingTypeProvided) {
+      const defaulted = validateSingleValue(listingTypeParam, 'sale');
+      if (defaulted && defaulted.ok) {
+        normalizedParameters[stripAt(listingTypeParam.name)] = defaulted.value;
+      }
+    }
+  }
+
   validateAgainstRules(
     normalizedName,
     { ...parameters, ...normalizedParameters },

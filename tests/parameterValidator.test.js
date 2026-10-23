@@ -80,8 +80,18 @@ describe('parameterValidator', () => {
     assert.ok(result.errors.some((e) => e.code === 'UNKNOWN_PARAMETER'));
   });
 
-  it('rejects a missing required parameter when configured', async () => {
+  it('defaults omitted listing_type to sale when that parameter exists', async () => {
     const result = await validateParameters('dbo.GetLoveableAPIListings', {
+      minBed: 1,
+      maxBed: 2,
+    });
+    assert.equal(result.valid, true);
+    assert.equal(result.normalizedParameters.listing_type, 'sale');
+  });
+
+  it('rejects explicit null listing_type as REQUIRED', async () => {
+    const result = await validateParameters('dbo.GetLoveableAPIListings', {
+      listing_type: null,
       minBed: 1,
       maxBed: 2,
     });

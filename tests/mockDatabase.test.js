@@ -125,13 +125,23 @@ describe('mock database mode', () => {
     assert.ok(result.errors.some((e) => e.code === 'PROCEDURE_NOT_ALLOWED'));
   });
 
-  it('rejects missing required parameters when configured', async () => {
+  it('defaults omitted listing_type to sale when that parameter exists', async () => {
     const result = await validateParameters('dbo.GetLoveableAPIListings', {
       minBed: 1,
       maxBed: 2,
     });
+    assert.equal(result.valid, true);
+    assert.equal(result.normalizedParameters.listing_type, 'sale');
+  });
+
+  it('rejects explicit null listing_type as REQUIRED', async () => {
+    const result = await validateParameters('dbo.GetLoveableAPIListings', {
+      listing_type: null,
+      minBed: 1,
+      maxBed: 2,
+    });
     assert.equal(result.valid, false);
-    assert.ok(result.errors.some((e) => e.code === 'REQUIRED'));
+    assert.ok(result.errors.some((e) => e.code === 'REQUIRED' && e.parameter === 'listing_type'));
   });
 
   it('accepts explicit NULL values', async () => {
